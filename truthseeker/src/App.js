@@ -1,22 +1,15 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Shield,
-  Radio,
   Activity,
   AlertTriangle,
-  Lock,
   ChevronRight,
-  Zap,
-  X,
-  FileWarning,
-  BarChart3,
   PenTool,
   Save,
   Trash2,
   Terminal,
   Book,
-  Search,
-  RefreshCw
+  Search
 } from 'lucide-react';
 
 // Hooks
@@ -36,6 +29,8 @@ import TruthButton from './components/TruthButton';
 import TermReader from './components/TermReader';
 import ArticleReader from './components/ArticleReader';
 import PanicMode from './components/PanicMode';
+import ProgressBar from './components/ProgressBar';
+import WeeklyStatus from './components/WeeklyStatus';
 
 // --- Main App Component ---
 export default function RecoveryApp() {
@@ -48,6 +43,7 @@ export default function RecoveryApp() {
 
   // Data Persistence
   const [lastRelapse, setLastRelapse] = useLocalStorage('lastRelapse', new Date().toISOString());
+  // eslint-disable-next-line no-unused-vars
   const [history, setHistory] = useLocalStorage('relapseHistory', []);
   const [journal, setJournal] = useLocalStorage('fieldNotes', []);
   const [noteInput, setNoteInput] = useState('');
@@ -68,7 +64,18 @@ export default function RecoveryApp() {
     return () => clearInterval(timer);
   }, []);
 
-  const streakMs = now - new Date(lastRelapse).getTime();
+  // Safe Calculation of Streak
+  const lastRelapseDate = new Date(lastRelapse);
+  const isValidDate = !isNaN(lastRelapseDate.getTime());
+
+  // Auto-correct bad state if needed
+  useEffect(() => {
+    if (!isValidDate) {
+      setLastRelapse(new Date().toISOString());
+    }
+  }, [isValidDate, setLastRelapse]);
+
+  const streakMs = isValidDate ? now - lastRelapseDate.getTime() : 0;
   const clearance = getClearanceLevel(streakMs);
 
   const handleRelapse = () => {
@@ -143,7 +150,7 @@ export default function RecoveryApp() {
         {/* QUOTE BANNER */}
         <div className="mb-8 overflow-hidden border-y border-green-900 bg-black py-2 relative">
           <div className="whitespace-nowrap animate-[marquee_20s_linear_infinite] text-green-700 font-bold uppercase tracking-[0.5em] text-xs">
-            {quote} /// {quote} /// {quote} /// {quote} /// {quote}
+            {quote} {'///'} {quote} {'///'} {quote} {'///'} {quote} {'///'} {quote}
           </div>
         </div>
 
@@ -182,10 +189,12 @@ export default function RecoveryApp() {
         {activeTab === 'dashboard' && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
-            {/* COUNTER CARD */}
+            {/* ROW 1: SPLIT COLUMN */}
             <div className="grid md:grid-cols-2 gap-6">
-              <ParanoidWindow title="RETENTION_TIMER" warningLevel={streakMs < 1000 * 60 * 60 ? "high" : "low"}>
-                <div className="flex flex-col items-center justify-center py-8">
+
+              {/* COLUMN 1: TIMER COMPONENT */}
+              <ParanoidWindow title="RETENTION_TIMER" warningLevel={streakMs < 1000 * 60 * 60 ? "high" : "low"} className="h-full">
+                <div className="flex flex-col items-center justify-center h-full py-4">
                   <div className="grid grid-cols-4 gap-4 text-center w-full mb-8">
                     {Object.entries(time).map(([label, value]) => (
                       <div key={label} className="bg-[#001100] border border-green-900 p-2 relative group hover:border-[#00ff00] transition-colors">
@@ -196,9 +205,15 @@ export default function RecoveryApp() {
                     ))}
                   </div>
 
-                  <div className="w-full bg-[#001100] h-4 border border-green-900 mb-4 relative overflow-hidden">
-                    <div className="absolute inset-y-0 left-0 bg-[#00ff00] animate-[pulse_2s_infinite]" style={{ width: `${Math.min((streakMs / (1000 * 60 * 60 * 24 * 90)) * 100, 100)}%` }}></div>
-                  </div>
+                  <ProgressBar
+                    value={streakMs}
+                    max={1000 * 60 * 60 * 24 * 90}
+                    size="lg"
+                    striped
+                    animated
+                    colorClass="bg-[#00ff00]"
+                    className="mb-4"
+                  />
 
                   <div className="flex justify-between w-full text-xs font-bold uppercase">
                     <span className="text-green-700">CURRENT CLEARANCE:</span>
@@ -207,9 +222,9 @@ export default function RecoveryApp() {
                 </div>
               </ParanoidWindow>
 
-              {/* MISSION STATUS */}
-              <div className="space-y-6">
-                <ParanoidWindow title="THREAT_LEVEL">
+              {/* COLUMN 2: THREAT LEVEL & REPORTING (Stacked) */}
+              <div className="space-y-6 flex flex-col justify-between">
+                <ParanoidWindow title="THREAT_LEVEL" className="flex-1">
                   <div className="flex items-center gap-4 mb-4">
                     <AlertTriangle size={32} className="text-yellow-500 animate-bounce" />
                     <div>
@@ -242,7 +257,12 @@ export default function RecoveryApp() {
               </div>
             </div>
 
-            {/* RECENT INTEL FEED */}
+            {/* ROW 2: WEEKLY ACTIVITY (FULL WIDTH) */}
+            <ParanoidWindow title="WEEKLY_ACTIVITY">
+              <WeeklyStatus history={history} />
+            </ParanoidWindow>
+
+            {/* ROW 3: RECENT INTEL FEED */}
             <ParanoidWindow title="DECRYPTED_COMMUNIQUES">
               <ul className="space-y-4">
                 {vocabularyList.slice(0, 3).map((term, i) => (
