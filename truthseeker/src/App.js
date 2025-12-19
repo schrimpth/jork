@@ -14,6 +14,7 @@ import {
 
 // Hooks
 import { useLocalStorage } from './hooks/useLocalStorage';
+import { useBioMetrics } from './hooks/useBioMetrics';
 
 // Utils
 import { formatDuration, getClearanceLevel } from './utils/timeUtils';
@@ -77,6 +78,9 @@ export default function RecoveryApp() {
 
   const streakMs = isValidDate ? now - lastRelapseDate.getTime() : 0;
   const clearance = getClearanceLevel(streakMs);
+
+  // === CALCULATE BIO METRICS DYNAMICALLY ===
+  const metrics = useBioMetrics(journal, streakMs);
 
   const handleRelapse = () => {
     const timestamp = new Date().toISOString();
@@ -226,24 +230,26 @@ export default function RecoveryApp() {
               <div className="space-y-6 flex flex-col justify-between">
                 <ParanoidWindow title="THREAT_LEVEL" className="flex-1">
                   <div className="flex items-center gap-4 mb-4">
-                    <AlertTriangle size={32} className="text-yellow-500 animate-bounce" />
+                    <AlertTriangle size={32} className={`animate-bounce ${metrics.threat.color}`} />
                     <div>
-                      <div className="text-2xl font-bold text-yellow-500">ELEVATED</div>
-                      <div className="text-xs text-green-700">SUSPICIOUS NETWORK ACTIVITY DETECTED</div>
+                      <div className={`text-2xl font-bold ${metrics.threat.color}`}>{metrics.threat.label}</div>
+                      <div className="text-xs text-green-700">{metrics.threat.note}</div>
                     </div>
                   </div>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between border-b border-green-900 pb-1">
-                      <span>DOPAMINE RECEPTORS:</span>
-                      <span className="text-red-500 font-bold">{Math.min(20 + streakMs / (1000 * 60 * 60 * 24), 100).toFixed(0)}% RECOVERED</span>
+                      <span>D2 RECEPTORS:</span>
+                      <span className={`${metrics.dopamine.color} font-bold`}>{metrics.dopamine.label} ({metrics.dopamine.percent}%)</span>
                     </div>
                     <div className="flex justify-between border-b border-green-900 pb-1">
                       <span>PINEAL GLAND:</span>
-                      <span className="text-orange-500 font-bold">{Math.min(10 + streakMs / (1000 * 60 * 60 * 24 * 0.5), 100).toFixed(0)}% DECALCIFIED</span>
+                      <span className={`${metrics.pineal.color} font-bold`}>{metrics.pineal.label} ({metrics.pineal.percent}%)</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>VIBRATIONAL FREQUENCY:</span>
-                      <span className="text-green-500 font-bold">{(7.83 + streakMs / (1000 * 60 * 60 * 24)).toFixed(2)} Hz</span>
+                      <span>VIBRATION FREQ:</span>
+                      <span className={`font-bold ${metrics.frequency.isUnstable ? 'text-red-500 glitch-text' : 'text-[#00ff00]'}`}>
+                        {metrics.frequency.value.toFixed(2)} Hz {metrics.frequency.isUnstable && '(!)'}
+                      </span>
                     </div>
                   </div>
                 </ParanoidWindow>
